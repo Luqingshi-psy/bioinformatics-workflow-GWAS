@@ -1,0 +1,89 @@
+---
+title: "LDSC"
+output: html_document
+date: "2026-03-11"
+---
+# Script name: vcf_to_ldsc.R
+---
+
+## 
+
+```{r}
+library(vcfR)
+library(dplyr)
+library(data.table)
+# inputFile path
+vcf_file <- "${PROJECT_ROOT}"
+output_file <- "${PROJECT_ROOT}"
+```
+
+## 
+
+```{r}
+
+
+# N_cas <- 10000   # case count
+# N_con <- 10883   # control count
+# fixed_N <- 2 / (1/N_cas + 1/N_con)
+
+sample_name <- NULL
+```
+
+```{r}
+vcf <- read.vcfR(vcf_file, verbose = FALSE)
+gt <- vcf@gt
+
+sample_col_idx <- if (is.null(sample_name)) 2 else which(colnames(gt) == sample_name)
+if (length(sample_col_idx) == 0) stop(msg)
+
+format_col <- gt[, 1]
+sample_col <- gt[, sample_col_idx]
+```
+
+
+```{r}
+library(data.table)
+dt <- data.table(FORMAT = format_col, SAMPLE = sample_col)
+
+format_fields <- strsplit(format_col[1], ":")[[1]]
+dt[, c(paste0("col_", seq_along(format_fields))) := tstrsplit(SAMPLE, ":", fixed = TRUE)]
+```
+
+
+```{r}
+setnames(dt, paste0("col_", seq_along(format_fields)), format_fields)
+
+dt[, ES := as.numeric(ES)]
+dt[, SE := as.numeric(SE)]
+dt[, LP := as.numeric(LP)]
+
+fix_dt <- as.data.table(getFIX(vcf))
+result <- cbind(fix_dt[, .(SNP = ID, A1 = ALT, A2 = REF)], dt[, .(ES, SE, LP)])
+```
+
+
+```{r}
+cat(>>> msg、SE=0msg...\n)
+gwas_clean <- result %>%
+  filter(!is.na(ES) & !is.na(SE) & !is.na(LP) & SE != 0) %>%
+  mutate(
+    Z = ES / SE,
+    P = 10^(-LP)
+  ) %>%
+  select(SNP, A1, A2, Z, P)
+```
+```{r}
+head(gwas_clean)
+```
+
+##
+
+```{r}
+cat(>>> msg:, output_file, "\n")
+write.table(gwas_clean, file = output_file, sep = "\t", row.names = FALSE, quote = FALSE)
+
+cat(>>> msg！msg, nrow(gwas_clean), msgSNP。\n)
+cat(>>> msg：\n)
+print(head(gwas_clean))
+```
+
