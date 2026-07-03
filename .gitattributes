@@ -1,0 +1,11 @@
+# macOS metadata
+.DS_Store          export-ignore
+.DS_Store?         export-ignore
+._*                export-ignore
+.Spotlight-V100    export-ignore
+.Trashes           export-ignore
+
+# Windows
+Thumbs.db          export-ignore
+ehthumbs.db        export-ignore
+Desktop.ini        export-ignore
